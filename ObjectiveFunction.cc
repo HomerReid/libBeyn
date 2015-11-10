@@ -72,9 +72,11 @@ double Objective(unsigned n, const double *x,
    HMatrix *M         = Data->M;
    HMatrix *Mp        = Data->Mp;
    HMatrix *Mm        = Data->Mm;
+   HVector *Lambda    = Data->Lambda;
    char *FileBase     = Data->FileBase;
    double Delta       = Data->Delta;
    bool SecondOrderFD = Data->SecondOrderFD;
+   bool Eigenvalues   = Data->Eigenvalues;
    double *gradFFD    = Data->gradFFD;
    double *gradCFD    = Data->gradCFD;
 
@@ -103,11 +105,30 @@ double Objective(unsigned n, const double *x,
    /***************************************************************/
    Log("Assembling M at {w,k}={%e,%e} {%e,%e}...",
         real(Omega),imag(Omega),kBloch[0],kBloch[1]);
-
    AssembleM(Data, Omega, kBloch, M);
+
+   /***************************************************************/
+   /***************************************************************/
+   /***************************************************************/
+   cdouble LMinAbs=0.0, LMinRe=0.0, LMinIm=0.0;
+   if (Eigenvalues)
+    { Mp->Copy(M);
+      Mp->NSEig(Lambda);
+      double MinAbs=1.0e89, MinRe=1.0e89, MinIm=1.0e89;
+      for(n=0; n<Lambda->N; n++)
+       { cdouble L=Lambda->GetEntry(n);
+         if (abs(L) < MinAbs) 
+          { MinAbs=abs(L);      LMinAbs=L; };
+         if (abs(real(L)) < MinRe) 
+          { MinRe=abs(real(L)); LMinRe=L;  };
+         if (imag(L) < MinIm) 
+          { MinIm=abs(imag(L)); LMinIm=L;  };
+       };
+    };
+
    cdouble LogDetM;
    double MRCond = Data->RCond = GetRCond(M, &LogDetM);
-   
+
    /***************************************************************/
    /***************************************************************/
    /***************************************************************/
@@ -147,8 +168,20 @@ double Objective(unsigned n, const double *x,
       fprintf(ff,"# 3   4 kx, ky \n");
       fprintf(ff,"# 5   6 re, im log det M\n");
       fprintf(ff,"# 7     MRCond\n");
-      fprintf(ff,"# 8   9 grad f (FFD)\n");
-      fprintf(ff,"# 10 11 grad f (FFD)\n");
+      int nc=8;
+      if (grad)
+       { fprintf(ff,"# %i %i grad f (FFD)\n",nc,nc+1);
+         fprintf(ff,"# %i %i grad f (CFD)\n",nc+2,nc+3);
+         nc+=4;
+       };
+      if (Eigenvalues)
+       { fprintf(ff,"# %i %i arg min abs|eigenvalue| \n",nc,nc+1);
+         nc+=2;
+         fprintf(ff,"# %i %i arg min re|eigenvalue| \n",nc,nc+1);
+         nc+=2;
+         fprintf(ff,"# %i %i arg min im|eigenvalue| \n",nc,nc+1);
+         nc+=2;
+       };
       fclose(ff);
     };
 
@@ -163,9 +196,12 @@ double Objective(unsigned n, const double *x,
    if (grad)
     { fprintf(ff,"%.2e %.2e ",gradFFD[0],gradFFD[1]);
       fprintf(ff,"%.2e %.2e ",gradCFD[0],gradCFD[1]);
-    }
-   else
-    fprintf(ff,"0.0 0.0 0.0 0.0 ");
+    };
+   if (Eigenvalues)
+    { fprintf(ff,"%+.8e %.8e \n",real(LMinAbs),imag(LMinAbs));
+      fprintf(ff,"%+.8e %.8e \n",real(LMinRe),imag(LMinRe));
+      fprintf(ff,"%+.8e %.8e \n",real(LMinIm),imag(LMinIm));
+    };
    fprintf(ff,"\n");
    fclose(ff);
 
