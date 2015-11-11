@@ -22,6 +22,7 @@ typedef struct SSData
    RWGGeometry *G;
    HMatrix *M, *Mp, *Mm;
    HVector *Lambda;
+   HVector *Sigma;
    cdouble Omega;
    double *kBloch;
    char *FileBase;
@@ -33,6 +34,7 @@ typedef struct SSData
    bool SecondOrderFD;
    bool DBOptimization;
    bool Eigenvalues; 
+   bool SVD;
 
  } SSData;
 

@@ -107,6 +107,7 @@ int main(int argc, char *argv[])
   bool SecondOrderFD=false;
   bool DBOptimization=false;
   bool Eigenvalues=false;
+  bool SVD=false;
   /* name        type    #args  max_instances  storage    count  description*/
   OptStruct OSArray[]=
    { {"geometry",           PA_STRING,  1, 1, (void *)&GeoFile,            0,   ".scuffgeo file"},
@@ -126,6 +127,7 @@ int main(int argc, char *argv[])
      {"Console",            PA_BOOL,    0, 1, (void *)&Console,            0,   ""},
      {"DBOptimization",     PA_BOOL,    0, 1, (void *)&DBOptimization,     0,   ""},
      {"Eigenvalues",        PA_BOOL,    0, 1, (void *)&Eigenvalues,        0,   ""},
+     {"SVD",                PA_BOOL,    0, 1, (void *)&SVD,                0,   ""},
 //
      {0,0,0,0,0,0,0}
    };
@@ -159,6 +161,7 @@ int main(int argc, char *argv[])
   Data->Mp          = G->AllocateBEMMatrix();
   Data->Mm          = G->AllocateBEMMatrix();
   Data->Lambda      = G->AllocateRHSVector();
+  Data->Sigma       = G->AllocateRHSVector(true);
   Data->Delta       = Delta;
   Data->kBloch      = (G->LDim>0) ? kBloch : 0;
   Data->EstimateDerivative = EstimateDerivative;
@@ -166,6 +169,7 @@ int main(int argc, char *argv[])
   Data->SecondOrderFD = SecondOrderFD;
   Data->DBOptimization = DBOptimization;
   Data->Eigenvalues = Eigenvalues;
+  Data->SVD         = SVD;
   Data->FileBase    = FileBase ? FileBase : strdup(GetFileBase(GeoFile));
 
   /***************************************************************/
@@ -198,3 +202,4 @@ int main(int argc, char *argv[])
   /***************************************************************/
   printf("Thank you for your support.\n");
 }
+

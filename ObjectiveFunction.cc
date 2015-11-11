@@ -73,10 +73,12 @@ double Objective(unsigned n, const double *x,
    HMatrix *Mp        = Data->Mp;
    HMatrix *Mm        = Data->Mm;
    HVector *Lambda    = Data->Lambda;
+   HVector *Sigma     = Data->Sigma;
    char *FileBase     = Data->FileBase;
    double Delta       = Data->Delta;
    bool SecondOrderFD = Data->SecondOrderFD;
    bool Eigenvalues   = Data->Eigenvalues;
+   bool SVD           = Data->SVD;
    double *gradFFD    = Data->gradFFD;
    double *gradCFD    = Data->gradCFD;
 
@@ -118,11 +120,22 @@ double Objective(unsigned n, const double *x,
       for(n=0; n<Lambda->N; n++)
        { cdouble L=Lambda->GetEntry(n);
          if (abs(L) < MinAbs) 
-          { MinAbs=abs(L);      LMinAbs=L; };
+         { MinAbs=abs(L);      LMinAbs=L; };
          if (abs(real(L)) < MinRe) 
           { MinRe=abs(real(L)); LMinRe=L;  };
          if (imag(L) < MinIm) 
           { MinIm=abs(imag(L)); LMinIm=L;  };
+       };
+    };
+
+   double SigmaMin=1.0e89, SigmaMax=0.0;
+   if (SVD)
+    { Mp->Copy(M);
+      Mp->SVD(Sigma);
+      for(n=0; n<Sigma->N; n++)
+       { double S=Sigma->GetEntryD(n);
+         SigmaMin=fmin(SigmaMin, S);
+         SigmaMax=fmax(SigmaMax, S);
        };
     };
 
@@ -182,6 +195,10 @@ double Objective(unsigned n, const double *x,
          fprintf(ff,"# %i %i arg min im|eigenvalue| \n",nc,nc+1);
          nc+=2;
        };
+      if (SVD)
+       { fprintf(ff,"# %i %i min, max singular value\n",nc,nc+1);
+         nc+=2;
+       };
       fclose(ff);
     };
 
@@ -198,10 +215,12 @@ double Objective(unsigned n, const double *x,
       fprintf(ff,"%.2e %.2e ",gradCFD[0],gradCFD[1]);
     };
    if (Eigenvalues)
-    { fprintf(ff,"%+.8e %.8e \n",real(LMinAbs),imag(LMinAbs));
-      fprintf(ff,"%+.8e %.8e \n",real(LMinRe),imag(LMinRe));
+    { fprintf(ff,"%+.8e %.8e ",real(LMinAbs),imag(LMinAbs));
+      fprintf(ff,"%+.8e %.8e ",real(LMinRe),imag(LMinRe));
       fprintf(ff,"%+.8e %.8e \n",real(LMinIm),imag(LMinIm));
     };
+   if (SVD)
+    fprintf(ff,"%+.8e %.8e \n",SigmaMin,SigmaMax);
    fprintf(ff,"\n");
    fclose(ff);
 
