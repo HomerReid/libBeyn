@@ -217,10 +217,10 @@ double Objective(unsigned n, const double *x,
    if (Eigenvalues)
     { fprintf(ff,"%+.8e %.8e ",real(LMinAbs),imag(LMinAbs));
       fprintf(ff,"%+.8e %.8e ",real(LMinRe),imag(LMinRe));
-      fprintf(ff,"%+.8e %.8e \n",real(LMinIm),imag(LMinIm));
+      fprintf(ff,"%+.8e %.8e ",real(LMinIm),imag(LMinIm));
     };
    if (SVD)
-    fprintf(ff,"%+.8e %.8e \n",SigmaMin,SigmaMax);
+    fprintf(ff,"%+.8e %.8e ",SigmaMin,SigmaMax);
    fprintf(ff,"\n");
    fclose(ff);
 
