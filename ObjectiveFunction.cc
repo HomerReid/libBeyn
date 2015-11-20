@@ -115,6 +115,7 @@ double Objective(unsigned n, const double *x,
    cdouble LMinAbs=0.0, LMinRe=0.0, LMinIm=0.0;
    if (Eigenvalues)
     { Mp->Copy(M);
+      Log("Computing eigenspectrum...");
       Mp->NSEig(Lambda);
       double MinAbs=1.0e89, MinRe=1.0e89, MinIm=1.0e89;
       for(n=0; n<Lambda->N; n++)
@@ -131,6 +132,7 @@ double Objective(unsigned n, const double *x,
    double SigmaMin=1.0e89, SigmaMax=0.0;
    if (SVD)
     { Mp->Copy(M);
+      Log("Computing SVD...");
       Mp->SVD(Sigma);
       for(n=0; n<Sigma->N; n++)
        { double S=Sigma->GetEntryD(n);
@@ -140,6 +142,7 @@ double Objective(unsigned n, const double *x,
     };
 
    cdouble LogDetM;
+   Log("Computing RCond...");
    double MRCond = Data->RCond = GetRCond(M, &LogDetM);
 
    /***************************************************************/
