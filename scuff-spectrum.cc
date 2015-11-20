@@ -47,7 +47,7 @@ void AdjustkBloch(RWGGeometry *G, cdouble Omega, double *kBloch)
       continue;
 
      Warn("|kBloch| very close to |k| in region %i; tweaking by 1 %c %e",
-           Threshold > 0.0 ? '+' : '-' , fabs(Threshold));
+           nr, Threshold > 0.0 ? '+' : '-' , fabs(Threshold));
      if (G->LDim==1) 
       kBloch[0]*=(1.0+Threshold);
      else
