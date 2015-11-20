@@ -27,7 +27,7 @@ void AdjustkBloch(RWGGeometry *G, cdouble Omega, double *kBloch)
 {
   if (imag(Omega)!=0.0) return;
 
-  double Threshold=1.0e-8;
+  double Threshold=1.0e-4;
   if (char *s=getenv("SCUFF_KBLOCH_THRESHOLD"))
    sscanf(s,"%le",&Threshold);
   if (Threshold==0.0)
@@ -145,6 +145,7 @@ int main(int argc, char *argv[])
   bool Console=false;
   bool SecondOrderFD=false;
   bool DBOptimization=false;
+  bool RCond=false;
   bool Eigenvalues=false;
   bool SVD=false;
   /* name        type    #args  max_instances  storage    count  description*/
@@ -165,6 +166,7 @@ int main(int argc, char *argv[])
      {"SecondOrderFD",      PA_BOOL,    0, 1, (void *)&SecondOrderFD,      0,   ""},
      {"Console",            PA_BOOL,    0, 1, (void *)&Console,            0,   ""},
      {"DBOptimization",     PA_BOOL,    0, 1, (void *)&DBOptimization,     0,   ""},
+     {"RCond",              PA_BOOL,    0, 1, (void *)&RCond,              0,   ""},
      {"Eigenvalues",        PA_BOOL,    0, 1, (void *)&Eigenvalues,        0,   ""},
      {"SVD",                PA_BOOL,    0, 1, (void *)&SVD,                0,   ""},
 //
@@ -207,6 +209,7 @@ int main(int argc, char *argv[])
   Data->Console     = Console;
   Data->SecondOrderFD = SecondOrderFD;
   Data->DBOptimization = DBOptimization;
+  Data->DoRCond     = RCond;
   Data->Eigenvalues = Eigenvalues;
   Data->SVD         = SVD;
   Data->FileBase    = FileBase ? FileBase : strdup(GetFileBase(GeoFile));

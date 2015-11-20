@@ -33,6 +33,7 @@ typedef struct SSData
    bool Console;
    bool SecondOrderFD;
    bool DBOptimization;
+   bool DoRCond;
    bool Eigenvalues; 
    bool SVD;
 
