@@ -23,6 +23,45 @@ using namespace scuff;
 /***************************************************************/
 /***************************************************************/
 /***************************************************************/
+void AdjustkBloch(RWGGeometry *G, cdouble Omega, double *kBloch)
+{
+  if (imag(Omega)!=0.0) return;
+
+  double Threshold=1.0e-8;
+  if (char *s=getenv("SCUFF_KBLOCH_THRESHOLD"))
+   sscanf(s,"%le",&Threshold);
+  if (Threshold==0.0)
+   return;
+  double T2=Threshold*Threshold;
+
+  double kB2 = kBloch[0]*kBloch[0];
+  if (G->LDim==2) kB2+=kBloch[1]*kBloch[1];
+  if (kB2==0.0) return;
+
+  for(int nr=0; nr<G->NumRegions; nr++)
+   { 
+     cdouble k=Omega*G->RegionMPs[nr]->GetRefractiveIndex(Omega);
+     double k2=norm(k);
+
+     if ( fabs( k2 - kB2 ) > T2*kB2 )
+      continue;
+
+     Warn("|kBloch| very close to |k| in region %i; tweaking by 1 %c %e",
+           Threshold > 0.0 ? '+' : '-' , fabs(Threshold));
+     if (G->LDim==1) 
+      kBloch[0]*=(1.0+Threshold);
+     else
+      { kBloch[0]*=(1.0+Threshold) / M_SQRT2;
+        kBloch[1]*=(1.0+Threshold) / M_SQRT2;
+      };
+     return;
+   };
+
+}
+
+/***************************************************************/
+/***************************************************************/
+/***************************************************************/
 void Optimize(SSData *Data, cdouble Omega0)
 {
   /***************************************************************/ 
@@ -187,6 +226,9 @@ int main(int argc, char *argv[])
          kBloch[1]   = OkBMatrix->GetEntryD(n, 2);
         else
          kBloch[1]   = 0.0;
+
+        AdjustkBloch(G, Data->Omega, kBloch);
+
         Objective(0, 0, 0, Data);
       };
    }
