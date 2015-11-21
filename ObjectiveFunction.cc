@@ -195,7 +195,7 @@ double Objective(unsigned n, const double *x,
    /***************************************************************/
    Log("Time (total | average (N))");
    for(int ns=0; ns<NUMSTATS; ns++)
-    Log("%10s: %0.2e | %0.2e (%5i)\n",Times[ns],Times[ns]/Counts[ns],Counts[ns]);
+    Log("%10s: %0.2e | %0.2e (%5i)\n",StatNames[ns],Times[ns],Times[ns]/Counts[ns],Counts[ns]);
  
    /***************************************************************/
    /***************************************************************/
