@@ -16,7 +16,7 @@ LDFLAGS += -L$(HOME)/codes/lib -L$(HOME)/lib
 CXXFLAGS += -O3 -DHAVE_CONFIG_H
 #CXXFLAGS += -ggdb -O0
 
-HR_LIBS = -lBeyn -lscuff
+HR_LIBS = -lscuff
 
 RDL_LIBS=-lreadline -lncurses
 HDF5_LIBS= -lhdf5_hl -lhdf5 
@@ -30,7 +30,7 @@ LIBS = $(HR_LIBS) $(OTHER_LIBS) -lpthread
 ##################################################
 OBJS = scuff-spectrum.o 
 
-scuff-spectrum:		$(OBJS) libBeyn.a
+scuff-spectrum:		$(OBJS) ./libBeyn.a
 			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 
 
 tOmegaDerivatives:	tOmegaDerivatives.o
