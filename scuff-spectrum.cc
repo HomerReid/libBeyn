@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
   int nc=0;
   for(int nc=0; nc<G->LDim; nc++)
    fprintf(f,"# %i k%c\n",nc+1,'x'+nc);
+  fprintf(f,"#  %i,%i,%i,%i,%i re,im omega0, R, N, L\n",nc+1,nc+2,nc+3,nc+4,nc+5); nc+=5;
   fprintf(f,"#  %i,%i re,im omega1 \n", nc+1, nc+2); nc+=2;
   fprintf(f,"#  %i,%i re,im omega2 \n", nc+1, nc+2); nc+=2;
   fprintf(f,"# ... \n");
@@ -110,6 +111,7 @@ int main(int argc, char *argv[])
      int K=BeynMethod(BD, Omega0, R, BeynFunc, (void *)&MyBFData, N);
      if (G->LDim>0)
       fprintVec(f,kBloch,G->LDim);
+     fprintf(f,"%s %e %i %i ",CD2S(Omega0),R,N,L);
      fprintVecCR(f,BD->Lambda->ZV,K);
      fflush(f);
 
