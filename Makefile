@@ -9,14 +9,12 @@ LIBDIR   = $(SCUFFEM)/lib
 ##################################################
 ##################################################
 CPPFLAGS += -I$(SCUFFEM)/include/scuff-em -I$(HOME)/include -I. -fopenmp
-CPPFLAGS += -I$(HOME)/codes/include -I$(HOME)/work/libBeyn
+CPPFLAGS += -I$(HOME)/codes/include
 CPPFLAGS += -I/home/homer/work/scuff-em/src/libs/libscuff
 LDFLAGS += -L$(LIBDIR) -Wl,-rpath,$(LIBDIR)
-LDFLAGS += -L$(HOME)/codes/lib -L$(HOME)/lib -L$(HOME)/work/libBeyn
+LDFLAGS += -L$(HOME)/codes/lib -L$(HOME)/lib
 CXXFLAGS += -O3 -DHAVE_CONFIG_H
 #CXXFLAGS += -ggdb -O0
-
-CPPFLAGS += -I/home/home/work/libBeyn
 
 HR_LIBS = -lBeyn -lscuff
 

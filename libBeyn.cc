@@ -124,6 +124,7 @@ HMatrix *W0TFull = Data->W0TFull; // FIXME
   A0.Zero();
   A1.Zero();
   double DeltaTheta = 2.0*M_PI / ((double)N);
+  Log(" Evaluating contour integral (%i points)...",N);
   for(int n=0; n<N; n++)
    { 
      cdouble Xi = exp(II*((double)n)*DeltaTheta);
@@ -161,6 +162,7 @@ Eigenvectors: MxK
   for(int k=0; k<Sigma->N; k++)
    if (Sigma->GetEntryD(k) > SigmaThreshold)
     K++;
+  Log(" %i/%i relevant singular values",K,L);
   if (K==L)
    Warn("K=L=%i in BeynMethod (repeat with higher L)",K,L);
 

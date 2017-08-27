@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
   fprintf(f,"#  %i,%i re,im omega1 \n", nc+1, nc+2); nc+=2;
   fprintf(f,"#  %i,%i re,im omega2 \n", nc+1, nc+2); nc+=2;
   fprintf(f,"# ... \n");
+  SetDefaultCD2SFormat("%.8e %.8e");
   for(int nr=0; nr<kBlochOmegaRNMatrix->NR; nr++)
    {
      double kBlochBuffer[2], *kBloch = (G->LDim>0) ? kBlochBuffer : 0;
@@ -110,6 +111,7 @@ int main(int argc, char *argv[])
      if (G->LDim>0)
       fprintVec(f,kBloch,G->LDim);
      fprintVecCR(f,BD->Lambda->ZV,K);
+     fflush(f);
 
    }; 
   fclose(f);
