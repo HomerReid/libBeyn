@@ -1,6 +1,6 @@
 # libBeyn: A C++ Implementation of Beyn's Contour-Integration Method for Nonlinear Eigenproblems
 
-<span style="font-variant:small caps">libbeyn</span> is a C++
+<span style="font-variant:small caps">libBeyn</span> is a C++
 library that implements the contour-integration method for
 nonlinear eigenproblems described by W-J. Beyn in this paper:
 
@@ -106,10 +106,10 @@ The prototype of the user-supplied function passed to `BeynSolve` is
 
 where `VHat` is an *M&times;L* complex-valued matrix. The user's function
 should overwrite `VHat` with `T(z) \ VHat`, i.e. the function
-should right-multiply the matrix `VHat` by the inverse of **T**(*z*).
+should left-multiply the matrix `VHat` by the inverse of **T**(*z*).
 
 **Note:** `HMatrix` is a simple LAPACK wrapper class provided by
-the [`libhmat` support library for scuff-em][libhmat], but
+the [`libhmat` support library for SCUFF-EM][libhmat], but
 you don't really need to use `libhmat` if you don't want to;
 just work directly with the three main fields of `HMatrix:`
 ```C++
@@ -122,9 +122,9 @@ just work directly with the three main fields of `HMatrix:`
 
 The eigenvalues and eigenvectors are stored in the `Lambda`
 and `Eigenvectors` fields of `Solver.`
-If the call to `BeynSolve` returns an integer `K`, then:
+If the integer `K` returned by `BeynSolve` is nonzero, 
 
-+ `Data->Lambda->GetEntry(k)` returns the `k`th eigenvalue
++ `Data->Lambda->GetEntry(k)` returns the `k`th eigenvalue (`k=0,1,...,K-1`)
 
 + `Data->Eigenvectors->GetEntry(m,k)` returns the `m`th component of the `k`th eigenvector.
 
@@ -254,7 +254,7 @@ This code, called `scuff-spectrum,` inputs:
   (For geometries with [1D or 2D lattice periodicity][PeriodicGeometries],
    each tuple also includes a 1D or 2D Bloch vector).
 
-For each `(&omega;0, R, N)` tuple in the file, `scuff-spectrum` executes
+For each `(omega0, R, N)` tuple in the file, `scuff-spectrum` executes
 Beyn's method---for a circular contour of radius `R,` centered at `omega0,`
 using `N`-point rectangular-rule quadrature---to compute all resonance 
 frequencies of the SIE impedance matrix **M**(&omega;)---lying within 
