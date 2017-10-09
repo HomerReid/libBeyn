@@ -19,7 +19,7 @@ CXXFLAGS += -O3 -DHAVE_CONFIG_H
 HR_LIBS = -lscuff
 
 RDL_LIBS=-lreadline -lncurses
-HDF5_LIBS= -lhdf5_hl -lhdf5 
+HDF5_LIBS= -L$(HOME)/codes/hdf5-parallel/lib -lhdf5_hl -lhdf5 
 LB_LIBS=-llapack -lopenblas -lgomp -lgfortran 
 OTHER_LIBS = $(RDL_LIBS) $(HDF5_LIBS) $(LB_LIBS)
 
@@ -29,6 +29,12 @@ LIBS = $(HR_LIBS) $(OTHER_LIBS) -lpthread
 ##################################################
 ##################################################
 OBJS = scuff-spectrum.o 
+
+tBeyn411:		tBeyn411.o ./libBeyn.a
+			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+tlibBeyn:      		tlibBeyn.o ./libBeyn.a
+			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 
 
 scuff-spectrum:		$(OBJS) ./libBeyn.a
 			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 

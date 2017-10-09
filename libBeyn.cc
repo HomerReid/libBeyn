@@ -35,128 +35,151 @@
 #define II cdouble(0.0,1.0)
 
 /***************************************************************/
+/* random number uniformly distributed between A and B *********/
 /***************************************************************/
+double randU(double A=0.0, double B=1.0)
+ { return A + (B-A) * random() * (1.0 / RAND_MAX); }
+
 /***************************************************************/
-cdouble zRandom()
-{ 
-  return 2.0*(drand48()-0.5) + II*2.0*(drand48()-0.5);
-}
+/* random number normally distributed with mean/stddev Mu/Sigma*/
+/***************************************************************/
+double randN(double Mu=0.0, double Sigma=1.0)
+ { double u1 = randU();
+   double u2 = randU();
+   return Mu + Sigma*sqrt(-2.0*log(u1))*cos(2.0*M_PI*u2);
+ }
+
+cdouble zrandN(double Mu=0.0, double Sigma=1.0)
+{ return cdouble(randN(Mu,Sigma), randN(Mu,Sigma)); }
 
 /***************************************************************/
 /***************************************************************/
 /***************************************************************/
-BeynData *CreateBeynData(int M, int L)
+BeynSolver *CreateBeynSolver(int M, int L)
 {
-  BeynData *Data = (BeynData *)mallocEC(sizeof(*Data));
+  BeynSolver *Solver= (BeynSolver *)mallocEC(sizeof(*Solver));
 
-  Data->M = M;
-  Data->L = L;
-  Data->ShiftEVs = true;
+  Solver->M = M;
+  Solver->L = L;
 
   int MLMax = (M>L) ? M : L;
   int MLMin = (M<L) ? M : L;
 
-  size_t Size1 = MLMax*L*sizeof(cdouble);
-  size_t Size2 = L*L*sizeof(cdouble);
-  Data->Workspaces[0] = mallocEC(Size1);
-  Data->Workspaces[1] = mallocEC(Size1);
-  Data->Workspaces[2] = mallocEC(Size1);
-  Data->Workspaces[3] = mallocEC(Size2);
+  // storage for singular values, eigenvalues, and eigenvectors
+  Solver->Sigma        = new HVector(MLMin);
+  Solver->Lambda       = new HVector(L, LHM_COMPLEX);
+  Solver->Eigenvectors = new HMatrix(M, L, LHM_COMPLEX);
 
-  srand48(time(0));
-  Data->VHat = new HMatrix(M,L,LHM_COMPLEX);
-  for(int m=0; m<M; m++)
-   for(int l=0; l<L; l++)
-    Data->VHat->SetEntry(m, l, zRandom() );
+  // random matrix used in algorithm
+  Solver->VHat         = new HMatrix(M,L,LHM_COMPLEX);
+  ReRandomize(Solver);
 
-  Data->Sigma  = new HVector(MLMin);
-  Data->Lambda = new HVector(L, LHM_COMPLEX);
-  Data->Eigenvectors = new HMatrix(M, L, LHM_COMPLEX);
+  // internal workspace: need storage for 3 MxL matrices
+  // plus 3 LxL matrices
+  #define MLBUFFERS 3
+  #define LLBUFFERS 3
+  size_t ML = MLMax*L, LL = L*L;
+  size_t WorkspaceSize = (MLBUFFERS*ML + LLBUFFERS*LL)*sizeof(cdouble);
+ 
+  Solver->Workspace = (cdouble *)mallocEC( WorkspaceSize );
 
-Data->V0Full=new HMatrix(M, M, LHM_COMPLEX); // FIXME
-Data->W0TFull=new HMatrix(L, L, LHM_COMPLEX); // FIXME
-
-  return Data;
+  return Solver;
   
 }
 
-void DestroyBeynData(BeynData *Data)
+/***************************************************************/
+/***************************************************************/
+/***************************************************************/
+void DestroyBeynSolver(BeynSolver *Solver)
 {
-  delete Data->VHat;
-  for(int ntm=0; ntm<4; ntm++)
-   free(Data->Workspaces[ntm]);
-  delete Data->Sigma;
-  delete Data->Lambda;
+  delete   Solver->Sigma;
+  delete   Solver->Lambda;
+  delete   Solver->Eigenvectors;
+  delete   Solver->VHat;
+  free(Solver->Workspace);
 
-delete Data->V0Full; // FIXME
-delete Data->W0TFull; // FIXME
-
-  delete Data;
+  delete Solver;
 }
 
 /***************************************************************/
 /***************************************************************/
 /***************************************************************/
-int BeynMethod(BeynData *Data, cdouble z0, double R,
-               BeynFunction UserFunction, void *UserData, int N)
+void ReRandomize(BeynSolver *Solver, unsigned int RandSeed)
+{
+  if (RandSeed==0) 
+   RandSeed=time(0);
+  srandom(RandSeed);
+  HMatrix *VHat=Solver->VHat;
+  for(int nr=0; nr<VHat->NR; nr++)
+   for(int nc=0; nc<VHat->NC; nc++)
+    VHat->SetEntry(nr,nc,zrandN());
+
+}
+
+/***************************************************************/
+/***************************************************************/
+/***************************************************************/
+int BeynSolve(BeynSolver *Solver,
+              BeynFunction UserFunction, void *UserData,
+              cdouble z0, double Rx, double Ry, int N)
 {  
+  if (Rx==Ry)
+   Log("Applying Beyn method with z0=%s,R=%e,N=%i...",z2s(z0),Rx,N);
+  else
+   Log("Applying Beyn method with z0=%s,Rx=%e,Ry=%e,N=%i...",z2s(z0),Rx,Ry,N);
 
-  Log("Applying Beyn method with z0=%s,R=%e,N=%i...",z2s(z0),R,N);
+  int M                 = Solver->M;
+  int L                 = Solver->L;
+  HMatrix *VHat         = Solver->VHat;
+  HVector *Sigma        = Solver->Sigma;
+  HVector *Lambda       = Solver->Lambda;
+  HMatrix *Eigenvectors = Solver->Eigenvectors;
+  cdouble *Workspace    = Solver->Workspace;
 
-  int M                 = Data->M;
-  int L                 = Data->L;
-  bool ShiftEVs         = Data->ShiftEVs;
-  HMatrix *VHat         = Data->VHat;  
-  void **Workspaces     = Data->Workspaces;
-  HVector *Sigma        = Data->Sigma;
-  HVector *Lambda       = Data->Lambda;
-
-HMatrix *V0Full = Data->V0Full;   // FIXME
-HMatrix *W0TFull = Data->W0TFull; // FIXME
+  int MLMax = M>L ? M : L;
+  size_t ML = MLMax*L, LL = L*L;
+  cdouble *MLBuffers[3], *LLBuffers[3];
+  MLBuffers[0] = Workspace;
+  MLBuffers[1] = MLBuffers[0] + ML;
+  MLBuffers[2] = MLBuffers[1] + ML;
+  LLBuffers[0] = MLBuffers[2] + ML;
+  LLBuffers[1] = LLBuffers[0] + LL;
+  LLBuffers[2] = LLBuffers[1] + LL;
 
   /***************************************************************/
   /* evaluate contour integrals by numerical quadrature to get   */
   /* A0 and A1 matrices                                          */
   /***************************************************************/
-  HMatrix TM(M,L,LHM_COMPLEX,Workspaces[0]);
-  HMatrix A0(M,L,LHM_COMPLEX,Workspaces[1]);
-  HMatrix A1(M,L,LHM_COMPLEX,Workspaces[2]);
+  HMatrix       A0(M,L,LHM_COMPLEX,(void *)MLBuffers[0]);
+  HMatrix       A1(M,L,LHM_COMPLEX,(void *)MLBuffers[1]);
+  HMatrix MInvVHat(M,L,LHM_COMPLEX,(void *)MLBuffers[2]);
   A0.Zero();
   A1.Zero();
   double DeltaTheta = 2.0*M_PI / ((double)N);
   Log(" Evaluating contour integral (%i points)...",N);
   for(int n=0; n<N; n++)
    { 
-     cdouble Xi = exp(II*((double)n)*DeltaTheta);
-     cdouble dz = R*Xi;
-     cdouble z  = z0 + dz;
-     TM.Copy(VHat);
-     UserFunction(z, UserData, &TM);
-     VecPlusEquals(A0.ZM, Xi, TM.ZM, M*L);
-     VecPlusEquals(A1.ZM, Xi * (ShiftEVs ? dz : z), TM.ZM, M*L);
+     double Theta = ((double)n)*DeltaTheta;
+     double CT    = cos(Theta), ST=sin(Theta);
+     cdouble z1   = Rx*CT + II*Ry*ST;
+     cdouble dz   = (II*Rx*ST + Ry*CT)/((double)N);
+     MInvVHat.Copy(VHat);
+     UserFunction(z0+z1, UserData, &MInvVHat);
+     VecPlusEquals(A0.ZM, dz,    MInvVHat.ZM, M*L);
+     VecPlusEquals(A1.ZM, z1*dz, MInvVHat.ZM, M*L);
    };
-  A0.Scale( R / ((double)N) );
-  A1.Scale( R / ((double)N) );
 
   /***************************************************************/
   /* perform linear algebra manipulations to get eigenvalues and */
   /* eigenvectors                                                */
   /***************************************************************/
-#if 0
-V0Full: MxM
-V0:     MxK
-W0T:    KxK
-TM:     KxK
-B:      KxK
-S:      KxK
-Eigenvectors: MxK
-#endif
-
-  // A0 -> V0 * Sigma * W0'
+  // A0 -> V0Full * Sigma * W0TFull'
   Log(" Computing SVD...");
-  A0.SVD(Sigma, V0Full, W0TFull);
+  HMatrix V0Full(M,L,LHM_COMPLEX,(void *)MLBuffers[2]);
+  HMatrix W0TFull(L,L,LHM_COMPLEX,(void *)LLBuffers[0]);
+  A0.SVD(Sigma, &V0Full, &W0TFull);
 
-  // compute effective rank Q
+  // compute effective rank K
   int K=0;
   double SigmaThreshold=1.0e-8;
   for(int k=0; k<Sigma->N; k++)
@@ -165,36 +188,51 @@ Eigenvectors: MxK
   Log(" %i/%i relevant singular values",K,L);
   if (K==L)
    Warn("K=L=%i in BeynMethod (repeat with higher L)",K,L);
+  if (K==0)
+   { Warn("no eigenvalues found!");
+     return 0;
+   };
 
-  HMatrix V0(M,K,LHM_COMPLEX,LHM_NORMAL,Workspaces[1]);
-  V0Full->ExtractBlock(0, 0, &V0);
-
-  HMatrix W0T(K,L,LHM_COMPLEX,LHM_NORMAL,Workspaces[0]);
-  W0TFull->ExtractBlock(0,0, &W0T);
+  // set V0, W0T = matrices of first K right, left singular vectors
+  HMatrix V0(M,K,LHM_COMPLEX,(void *)MLBuffers[0]);
+  HMatrix W0T(K,L,LHM_COMPLEX,(void *)LLBuffers[1]);
+  for(int k=0; k<K; k++)
+   { for(int m=0; m<M; m++) V0.SetEntry(m,k,V0Full.GetEntry(m,k));
+     for(int l=0; l<L; l++) W0T.SetEntry(k,l,W0TFull.GetEntry(k,l));
+   };
 
   // B <- V0' * A1 * W0 * Sigma^-1
-  HMatrix TM2(K,L,LHM_COMPLEX,LHM_NORMAL,Workspaces[3]);
-  HMatrix B(K,K,LHM_COMPLEX,LHM_NORMAL,Workspaces[2]);
+  HMatrix TM2(K,L,LHM_COMPLEX,(void *)LLBuffers[0]);
+  HMatrix B(K,K,LHM_COMPLEX,(void *)LLBuffers[2]);
   Log(" Multiplying V0*A1->TM...");
-  V0.Multiply(&A1, &TM2, "--transA C");   // TM <- V0' * A1
+  V0.Multiply(&A1, &TM2, "--transA C");   // TM2 <- V0' * A1
   Log(" Multiplying TM*W0T->B...");
-  TM2.Multiply(&W0T, &B, "--transB C");   //  B <- TM * W0
-  for(int m=0; m<B.NR; m++)             //  B <- B * Sigma^{-1}
-   for(int n=0; n<B.NC; n++)
-    B.SetEntry(m,n,B.GetEntry(m,n)/Sigma->GetEntry(n));
+  TM2.Multiply(&W0T, &B, "--transB C");   //  B <- TM2 * W0
+  for(int m=0; m<K; m++)                  //  B <- B * Sigma^{-1}
+   for(int n=0; n<K; n++)
+    B.ScaleEntry(m,n,1.0/Sigma->GetEntry(n));
 
-  HMatrix S(K,K,LHM_COMPLEX,LHM_NORMAL,Workspaces[0]);
-  HMatrix Eigenvectors(M,K,LHM_COMPLEX,LHM_NORMAL,Workspaces[2]);
-  Lambda->Zero();
-  HVector LambdaK(K,LHM_COMPLEX,((void *)(Lambda->ZV)));
   Log(" Eigensolving...");
+  HVector LambdaK(K,LHM_COMPLEX,(void *)LLBuffers[0]);
+  HMatrix S(K,K,LHM_COMPLEX,(void *)LLBuffers[1]);
   B.NSEig(&LambdaK, &S);
-  if (ShiftEVs)
-   for(int k=0; k<K; k++)
-    Lambda->ZV[k] += z0;
-  Log(" Multiplying V0*S...");
-  V0.Multiply(&S, &Eigenvectors);
 
-  Data->Eigenvectors->InsertBlock(&Eigenvectors, 0, 0);
+  Log(" Multiplying V0*S...");
+  HMatrix EigenvectorsK(M,K,LHM_COMPLEX,(void *)MLBuffers[1]);
+  V0.Multiply(&S, &EigenvectorsK);
+
+  Solver->Lambda->Zero();
+  Solver->Eigenvectors->Zero();
+  for(int k=0; k<K; k++)
+   { Solver->Lambda->SetEntry(k, LambdaK.GetEntry(k) + z0 );
+     for(int m=0; m<M; m++)
+      Solver->Eigenvectors->SetEntry(m,k, EigenvectorsK.GetEntry(m,k));
+   };
+
   return K;
 }
+
+int BeynSolve(BeynSolver *Solver,
+              BeynFunction UserFunction, void *UserData,
+              cdouble z0, double R, int N)
+{ return BeynSolve(Solver, UserFunction, UserData, z0, R, R, N); }

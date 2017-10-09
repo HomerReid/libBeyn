@@ -28,17 +28,29 @@ typedef struct BFData
  { 
    RWGGeometry *G;
    HMatrix *M;
-
+   double kBloch[2];
  } BFData;
 
 void BeynFunc(cdouble Omega, void *UserData, HMatrix *VHat)
 {
   BFData *Data   = (BFData *)UserData;
+
   RWGGeometry *G = Data->G;
   HMatrix *M     = Data->M;
+  double *kBloch = Data->kBloch;
 
-  Log(" assembling BEM matrix at Omega=%s...",CD2S(Omega));
-  G->AssembleBEMMatrix(Omega, M);
+  if (G->LDim==0)
+   Log(" assembling BEM matrix at Omega=%s",CD2S(Omega));
+  if (G->LDim==1)
+   Log(" assembling BEM matrix at k={%e},Omega=%s", kBloch[0],CD2S(Omega));
+  if (G->LDim==2)
+   Log(" assembling BEM matrix at k={%e,%e},Omega=%s", kBloch[0],kBloch[1],CD2S(Omega));
+
+  if (G->LDim==0)
+   G->AssembleBEMMatrix(Omega, M);
+  else
+   G->AssembleBEMMatrix(Omega, kBloch, M);
+
   Log(" LUFactorizing...");
   M->LUFactorize();
   Log(" LUSolving...");
@@ -85,7 +97,7 @@ int main(int argc, char *argv[])
   HMatrix *kBlochOmegaRNMatrix = new HMatrix(kBlochOmegaRNFile);
 
   int N = G->TotalBFs;
-  BeynData *BD = CreateBeynData(N, L);
+  BeynSolver *Solver = CreateBeynSolver(N, L);
 
   FILE *f=vfopen("%s.Frequencies","a",FileBase);
   fprintf(f,"#%s running on %s (%s)\n",argv[0], GetHostName(), GetTimeString());
@@ -99,20 +111,21 @@ int main(int argc, char *argv[])
   SetDefaultCD2SFormat("%.8e %.8e");
   for(int nr=0; nr<kBlochOmegaRNMatrix->NR; nr++)
    {
-     double kBlochBuffer[2], *kBloch = (G->LDim>0) ? kBlochBuffer : 0;
+     struct BFData MyBFData = {G, M};
+     double *kBloch = MyBFData.kBloch;
+
      for(int d=0; d<G->LDim; d++) 
-      kBloch[d]=kBlochOmegaRNMatrix->GetEntryD(nr,d);
+      MyBFData.kBloch[d]=kBlochOmegaRNMatrix->GetEntryD(nr,d);
      cdouble Omega0 = kBlochOmegaRNMatrix->GetEntry(nr, G->LDim+0);
      double R       = kBlochOmegaRNMatrix->GetEntryD(nr, G->LDim+1);
      int N          = (int)(kBlochOmegaRNMatrix->GetEntryD(nr, G->LDim+2));
      Log("Looking for eigenvalues in contour (z0,R)={%s,%e}",CD2S(Omega0),R);
 
-     struct BFData MyBFData = {G, M};
-     int K=BeynMethod(BD, Omega0, R, BeynFunc, (void *)&MyBFData, N);
+     int K=BeynSolve(Solver, BeynFunc, (void *)&MyBFData, Omega0, R, N);
      if (G->LDim>0)
       fprintVec(f,kBloch,G->LDim);
      fprintf(f,"%s %e %i %i ",CD2S(Omega0),R,N,L);
-     fprintVecCR(f,BD->Lambda->ZV,K);
+     fprintVecCR(f,Solver->Lambda->ZV,K);
      fflush(f);
 
    }; 
