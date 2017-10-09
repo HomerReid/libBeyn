@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
   HMatrix *M             = G->AllocateBEMMatrix();
   HMatrix *ContourMatrix = new HMatrix(ContourFile);
 
-  int N = G->TotalBFs;
-  BeynSolver *Solver = CreateBeynSolver(N, L);
+  int D = G->TotalBFs;
+  BeynSolver *Solver = CreateBeynSolver(D, L);
 
   // open output file and write file header 
   FILE *f=vfopen("%s.Frequencies","a",FileBase);

@@ -240,7 +240,7 @@ Found 7 nonzero singular values.
  7: {+4.573182886588e-01, +4.649270462093e-08} 
 ```
 
-# Mode solver for <span style="font-variant:small caps">scuff-em</span>
+# Mode solver for <span style="font-variant:small caps">SCUFF-EM</span>
 
 Also packaged with `libBeyn` is a first stab at a mode solver for
 [SCUFF-EM](http://homerreid.github.io/scuff-em-documentation)
@@ -259,10 +259,10 @@ Beyn's method---for a circular contour of radius `R,` centered at `omega0,`
 using `N`-point rectangular-rule quadrature---to compute all resonance 
 frequencies of the SIE impedance matrix **M**(&omega;)---lying within 
 the contor. (A resonance frequency &omega; is simply a frequency at
-which **M(&omega;)** has a nontrivial nullspace, in which case the
-usual SIE equation **M** **s**=**finc** can have nontrivial
+which **M**(&omega;) has a nontrivial nullspace, in which case the
+usual SIE equation **M** **s**=**f** can have nontrivial
 surface-current solutions **s** even for vanishing incident 
-field **finc**.)
+fields **f**.)
 
 ## Example: Modes of a spherical dielectric cavity
 
@@ -272,9 +272,20 @@ filled with a homogeneous lossless dielectric with relative permittivity &epsilo
 For this problem, I can compute the exact mode frequencies numerically by
 looking for roots of the denominator of the Mie scattering coefficients
 relating interior to incident fields for M-type and N-type
-spherical polarizations.
+spherical polarizations. This calculation is described in Section 5.3
+in [this memo][scuffSpherical].
+
+Here's a plot of the lowest 8 resonant frequencies as computed via Mie theory
+and the eigenvalues identified by {\sc scuff-spectrum} for a radius-1
+sphere with $\epsilon=4$, meshed into 501 panels,
+for $N=20$ and $N=40$ quadrature points. 
+
+![MieTheoryVsScuffSpectrum](E4Sphere_501_Locus.png)
+
+The two calculations do not agree! What am I doing wrong?
 
 [scuffem]:	 	http://homerreid.github.io/scuff-em-documentation
 [libhmat]:	 	https://github.com/HomerReid/scuff-em/tree/master/src/libs/libhmat
 [Geometries]:	        http://homerreid.github.io/scuff-em-documentation/reference/Geometries
 [PeriodicGeometries]:	http://homerreid.github.io/scuff-em-documentation/reference/Geometries/#Extended
+[scuffSpherical]:	http://homerreid.github.io/scuff-em-documentation/tex/scuffSpherical.pdf
