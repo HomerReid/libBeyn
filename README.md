@@ -276,9 +276,9 @@ spherical polarizations. This calculation is described in Section 5.3
 in [this memo][scuffSpherical].
 
 Here's a plot of the lowest 8 resonant frequencies as computed via Mie theory
-and the eigenvalues identified by {\sc scuff-spectrum} for a radius-1
-sphere with $\epsilon=4$, meshed into 501 panels,
-for $N=20$ and $N=40$ quadrature points. 
+and the eigenvalues identified by SCUFF-SPECTRUM for a radius-1
+sphere with &epsilon;=4, meshed into 501 panels,
+for *N*=20 and *N=40* quadrature points.
 
 ![MieTheoryVsScuffSpectrum](E4Sphere_501_Locus.png)
 
