@@ -260,7 +260,7 @@ using `N`-point rectangular-rule quadrature---to compute all resonance
 frequencies of the SIE impedance matrix **M**(&omega;)---lying within 
 the contor. (A resonance frequency &omega; is simply a frequency at
 which **M**(&omega;) has a nontrivial nullspace, in which case the
-usual SIE equation **M** **s**=**f** can have nontrivial
+usual SIE equation **Ms**=**f** can have nontrivial
 surface-current solutions **s** even for vanishing incident 
 fields **f**.)
 
