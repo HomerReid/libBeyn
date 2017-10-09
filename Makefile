@@ -1,46 +1,39 @@
 ##################################################
-##################################################
+# set path to SCUFF-EM installation
 ##################################################
 SCUFFEM  = /home/homer/work/scuff-em-installation
-#SCUFFEM  = /home/homer/work/scuff-em-debug
-LIBDIR   = $(SCUFFEM)/lib
+
+SCUFFINC  =  $(SCUFFEM)/include/scuff-em
+SCUFFLIB  =  $(SCUFFEM)/lib
+CPPFLAGS  += -I$(SCUFFINC)
+LDFLAGS   += -L$(SCUFFLIB) -Wl,-rpath,$(SCUFFLIB)
+SCUFF_LIBS = -lscuff
 
 ##################################################
 ##################################################
 ##################################################
-CPPFLAGS += -I$(SCUFFEM)/include/scuff-em -I$(HOME)/include -I. -fopenmp
-CPPFLAGS += -I$(HOME)/codes/include
-CPPFLAGS += -I/home/homer/work/scuff-em/src/libs/libscuff
-LDFLAGS += -L$(LIBDIR) -Wl,-rpath,$(LIBDIR)
-LDFLAGS += -L$(HOME)/codes/lib -L$(HOME)/lib
-CXXFLAGS += -O3 -DHAVE_CONFIG_H
-#CXXFLAGS += -ggdb -O0
+CPPFLAGS+=-I$(HOME)/include -I$(HOME)/codes/include -I. -fopenmp
+LDFLAGS+=-L$(HOME)/codes/lib -L$(HOME)/lib
 
-HR_LIBS = -lscuff
+CXXFLAGS+=-O3 -DHAVE_CONFIG_H
+#CXXFLAGS+=-ggdb -O0
 
-RDL_LIBS=-lreadline -lncurses
-HDF5_LIBS= -L$(HOME)/codes/hdf5-parallel/lib -lhdf5_hl -lhdf5 
-LB_LIBS=-llapack -lopenblas -lgomp -lgfortran 
+HDF5_LIBS  =  -L$(HOME)/codes/hdf5-parallel/lib -lhdf5_hl -lhdf5 
+LB_LIBS    = -llapack -lopenblas -lgomp -lgfortran 
 OTHER_LIBS = $(RDL_LIBS) $(HDF5_LIBS) $(LB_LIBS)
 
-LIBS = $(HR_LIBS) $(OTHER_LIBS) -lpthread
+LIBS = $(SCUFF_LIBS) $(OTHER_LIBS) -lpthread
 
 ##################################################
 ##################################################
 ##################################################
-OBJS = scuff-spectrum.o 
+all:			tBeyn411 scuff-spectrum
 
 tBeyn411:		tBeyn411.o ./libBeyn.a
 			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-tlibBeyn:      		tlibBeyn.o ./libBeyn.a
+scuff-spectrum:		scuff-spectrum.o ./libBeyn.a
 			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 
-
-scuff-spectrum:		$(OBJS) ./libBeyn.a
-			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 
-
-tOmegaDerivatives:	tOmegaDerivatives.o
-			$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 libBeyn.a:		libBeyn.o libBeyn.h
 			ar r libBeyn.a libBeyn.o
