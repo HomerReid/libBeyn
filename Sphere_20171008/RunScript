@@ -1,0 +1,24 @@
+#!/bin/bash
+
+DIR=..
+CODE=scuff-spectrum
+
+PREFIX=
+if [ "x$1" == "x--debug" ]
+then
+  PREFIX="gdb --args"
+  shift
+fi
+
+BASE=${SES}/scuff-spectrum/Sphere_20171008
+export SCUFF_MESH_PATH=${SES}/mshFiles
+
+for N in 501 1482
+do
+  ARGS=""
+  ARGS="${ARGS} --geometry E4Sphere_${N}.scuffgeo"
+  ARGS="${ARGS} --ContourFile ContourFile"
+  ARGS="${ARGS} --L 20"
+  ARGS="${ARGS} --PlotContours"
+  ${PREFIX} ${DIR}/${CODE} ${ARGS}
+done

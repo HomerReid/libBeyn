@@ -248,9 +248,9 @@ that uses Beyn's method to search for electromagnetic resonance
 frequencies.
 This code, called `scuff-spectrum,` inputs:
 
-+ a [SCUFF-EM geometry file](http://homerreid.github.io/scuff-em-documentation/reference),
++ a [SCUFF-EM geometry file][Geometries]
 
-+ a file containing a succession of `(&omega;0, R, N)` tuples.
++ a file containing a succession of `(omega0, R, N)` tuples.
   (For geometries with [1D or 2D lattice periodicity][PeriodicGeometries],
    each tuple also includes a 1D or 2D Bloch vector).
 
@@ -276,4 +276,5 @@ spherical polarizations.
 
 [scuffem]:	 	http://homerreid.github.io/scuff-em-documentation
 [libhmat]:	 	https://github.com/HomerReid/scuff-em/tree/master/src/libs/libhmat
-[PeriodicGeometries]:	http://homerreid.github.io/scuff-em-documentation/reference/Geometries.md#Extended
+[Geometries]:	        http://homerreid.github.io/scuff-em-documentation/reference/Geometries
+[PeriodicGeometries]:	http://homerreid.github.io/scuff-em-documentation/reference/Geometries/#Extended
