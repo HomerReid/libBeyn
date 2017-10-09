@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
      {0,0,0,0,0,0,0}
    };
   ProcessOptions(argc, argv, OSArray);
-  SetDefaultCD2SFormat("{%+.8e,%+.8e}");
+  SetDefaultCD2SFormat("{%+.12e,%+.12e}");
 
   /***************************************************************/
   /* initialize BeynSolver data structure ************************/
