@@ -8,7 +8,7 @@ nonlinear eigenproblems described by W-J. Beyn in this paper:
 
 + DOI: [https://doi.org/10.1016/j.laa.2011.03.030](https://doi.org/10.1016/j.laa.2011.03.030)
 
-+ ArXiV: [https://arxiv.org/1003.1580](https://arxiv.org/1003.1580)
++ ArXiV: [https://arxiv.org/abs/1003.1580](https://arxiv.org/abs/1003.1580)
 
 More specifically, using a modified version of Beyn's notation,
 we consider nonlinear eigenproblems of the form
@@ -187,7 +187,12 @@ Found 8 eigenvalues:
 2054 hikari /home/homer/work/libBeyn <> 
 ```
 
-Try again with an *elliptical* contour, centered at the same point
+So, we've found all 5 of the correct eigenvalues, with
+precision ranging from 10 digits (`Lambda1`) to 5 digits (`Lambda5`),
+plus 3 spurious eigenvalues.
+
+Let's try again with the same number of quadrature points but now
+an *elliptical* contour, centered at the same point
 but now much wider than it is tall:
 
 ```bash
@@ -201,6 +206,9 @@ Found 7 eigenvalues:
 5: {+4.482033592848e+00,+1.790884427422e-07} 
 6: {+4.573368338358e-01,-2.154159593548e-05} 
 ```
+
+We get one fewer spurious eigenvalue, plus
+better accuracy in our determination of `Lambda5.`
 
 <a name="julia"></a>
 # Julia implementation
@@ -255,6 +263,16 @@ which **M(&omega;)** has a nontrivial nullspace, in which case the
 usual SIE equation **M** **s**=**finc** can have nontrivial
 surface-current solutions **s** even for vanishing incident 
 field **finc**.)
+
+## Example: Modes of a spherical dielectric cavity
+
+As a simple test, I'll use `scuff-spectrum` to look for modes of a
+spherical dielectric cavity---namely, a sphere of radius *R*=1 &mu;m,
+filled with a homogeneous lossless dielectric with relative permittivity &epsilon;~r~=4. 
+For this problem, I can compute the exact mode frequencies numerically by
+looking for roots of the denominator of the Mie scattering coefficients
+relating interior to incident fields for M-type and N-type
+spherical polarizations.
 
 [scuffem]:	 	http://homerreid.github.io/scuff-em-documentation
 [libhmat]:	 	https://github.com/HomerReid/scuff-em/tree/master/src/libs/libhmat
