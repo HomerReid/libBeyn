@@ -1,8 +1,7 @@
 ##################################################
 # set path to SCUFF-EM installation
 ##################################################
-#SCUFFEM  = /usr/local
-SCUFFEM  = /home/homer/work/scuff-em-development-installation
+SCUFFEM  = /usr/local
 
 SCUFFINC    =  $(SCUFFEM)/include/scuff-em
 SCUFFLIB    =  $(SCUFFEM)/lib
@@ -18,8 +17,7 @@ SCUFF_LIBS = -lscuff
 CPPFLAGS+=-I$(HOME)/include -I$(HOME)/codes/include -I. -fopenmp
 LDFLAGS+=-L$(HOME)/codes/lib -L$(HOME)/lib
 
-CXXFLAGS+=-O3 -DHAVE_CONFIG_H
-#CXXFLAGS+=-ggdb -O0
+CXXFLAGS+=-O3
 
 LB_LIBS    = -llapack -lopenblas -lgomp -lgfortran
 OTHER_LIBS = $(RDL_LIBS) $(LB_LIBS)

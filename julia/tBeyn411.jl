@@ -25,6 +25,7 @@ function Beyn411(z, VHat, MInvVHat, M)
   M[D,D-1] = ODE;                # bottom row
   M[D,D]   = 0.5*DE + z/(z-1.0);
 
+@printf("Howdage %e+%e\n",real(z),imag(z))
   MInvVHat = M\VHat
   MInvVHat
 
@@ -38,6 +39,7 @@ function SolveBeyn411(; z0=150.0+0.0*im, Rx=148.0, Ry=148.0, L=10, N=50)
   D = 400;
   M = im*zeros(D,D);
 
+@printf("Howdage %e+%e\n",real(z0),imag(z0))
   (Lambda,V)=BeynSolve(z0, Rx, Ry, (z,V,MIV)->Beyn411(z,V,MIV,M), D; L=L, N=N)
 
   for n=1:length(Lambda)

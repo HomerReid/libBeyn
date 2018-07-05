@@ -52,6 +52,7 @@ void BeynFunc(cdouble z, void *UserData, HMatrix *VHat)
   M->SetEntry(NR-1, NR-1, 0.5*DE + z/(z-1.0) ); // bottom row
 
   // replace VHat with M\VHat
+
   M->LUFactorize();
   M->LUSolve(VHat);
 }

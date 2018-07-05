@@ -34,8 +34,8 @@
 
 #define II cdouble(0.0,1.0)
 
-cdouble zrandN(double Mu=0.0, double Sigma=1.0)
-{ return cdouble(randN(Mu,Sigma), randN(Mu,Sigma)); }
+cdouble zrandN(double Sigma=1.0, double Mu=0.0)
+{ return cdouble(randN(Sigma,Mu), randN(Sigma,Mu)); }
 
 /***************************************************************/
 /***************************************************************/
@@ -152,7 +152,7 @@ int BeynSolve(BeynSolver *Solver,
      UserFunction(z0+z1, UserData, &MInvVHat);
      VecPlusEquals(A0.ZM, dz,    MInvVHat.ZM, M*L);
      VecPlusEquals(A1.ZM, z1*dz, MInvVHat.ZM, M*L);
-   };
+   }
 
   /***************************************************************/
   /* perform linear algebra manipulations to get eigenvalues and */
@@ -184,7 +184,7 @@ int BeynSolve(BeynSolver *Solver,
   for(int k=0; k<K; k++)
    { for(int m=0; m<M; m++) V0.SetEntry(m,k,V0Full.GetEntry(m,k));
      for(int l=0; l<L; l++) W0T.SetEntry(k,l,W0TFull.GetEntry(k,l));
-   };
+   }
 
   // B <- V0' * A1 * W0 * Sigma^-1
   HMatrix TM2(K,L,LHM_COMPLEX,(void *)LLBuffers[0]);
