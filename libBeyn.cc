@@ -50,18 +50,25 @@ BeynSolver *CreateBeynSolver(int M, int L)
   int MLMax = (M>L) ? M : L;
   int MLMin = (M<L) ? M : L;
 
-  // storage for singular values, eigenvalues, and eigenvectors
-  Solver->Sigma        = new HVector(MLMin);
-  Solver->Lambda       = new HVector(L, LHM_COMPLEX);
+  // storage for eigenvalues and eigenvectors
+  Solver->Eigenvalues  = new HVector(L, LHM_COMPLEX);
+  Solver->EVErrors     = new HVector(L, LHM_COMPLEX);
+  Solver->Residuals    = new HVector(L, LHM_COMPLEX);
   Solver->Eigenvectors = new HMatrix(M, L, LHM_COMPLEX);
 
-  // random matrix used in algorithm
+  // storage for singular values, random VHat matrix, etc. used in algorithm
+  Solver->A0           = new HMatrix(M,L,LHM_COMPLEX);
+  Solver->A1           = new HMatrix(M,L,LHM_COMPLEX);
+  Solver->A0Coarse     = new HMatrix(M,L,LHM_COMPLEX);
+  Solver->A1Coarse     = new HMatrix(M,L,LHM_COMPLEX);
+  Solver->MInvVHat     = new HMatrix(M,L,LHM_COMPLEX);
   Solver->VHat         = new HMatrix(M,L,LHM_COMPLEX);
+  Solver->Sigma        = new HVector(MLMin);
   ReRandomize(Solver);
 
-  // internal workspace: need storage for 3 MxL matrices
+  // internal workspace: need storage for 2 MxL matrices
   // plus 3 LxL matrices
-  #define MLBUFFERS 3
+  #define MLBUFFERS 2
   #define LLBUFFERS 3
   size_t ML = MLMax*L, LL = L*L;
   size_t WorkspaceSize = (MLBUFFERS*ML + LLBUFFERS*LL)*sizeof(cdouble);
@@ -77,10 +84,18 @@ BeynSolver *CreateBeynSolver(int M, int L)
 /***************************************************************/
 void DestroyBeynSolver(BeynSolver *Solver)
 {
-  delete   Solver->Sigma;
-  delete   Solver->Lambda;
-  delete   Solver->Eigenvectors;
-  delete   Solver->VHat;
+  delete  Solver->Eigenvalues;
+  delete  Solver->EVErrors;  
+  delete  Solver->Eigenvectors;
+
+  delete  Solver->A0;
+  delete  Solver->A1;
+  delete  Solver->A0Coarse;
+  delete  Solver->A1Coarse;
+  delete  Solver->MInvVHat;
+  delete  Solver->Sigma;
+  delete  Solver->VHat;
+
   free(Solver->Workspace);
 
   delete Solver;
@@ -102,81 +117,48 @@ void ReRandomize(BeynSolver *Solver, unsigned int RandSeed)
 }
 
 /***************************************************************/
+/* perform linear-algebra manipulations on the A0 and A1       */
+/* matrices (obtained via numerical quadrature) to extract     */
+/* eigenvalues and eigenvectors                                */
 /***************************************************************/
-/***************************************************************/
-int BeynSolve(BeynSolver *Solver,
-              BeynFunction UserFunction, void *UserData,
-              cdouble z0, double Rx, double Ry, int N)
-{  
-  if (Rx==Ry)
-   Log("Applying Beyn method with z0=%s,R=%e,N=%i...",z2s(z0),Rx,N);
-  else
-   Log("Applying Beyn method with z0=%s,Rx=%e,Ry=%e,N=%i...",z2s(z0),Rx,Ry,N);
+int ProcessAMatrices(BeynSolver *Solver, BeynFunction UserFunc, void *UserData,
+                     HMatrix *A0, HMatrix *A1, cdouble z0,
+                     HVector *Eigenvalues, HMatrix *Eigenvectors=0)
+{
+  int M          = Solver->M;
+  int L          = Solver->L;
+  HVector *Sigma = Solver->Sigma;
 
-  int M                 = Solver->M;
-  int L                 = Solver->L;
-  HMatrix *VHat         = Solver->VHat;
-  HVector *Sigma        = Solver->Sigma;
-  HVector *Lambda       = Solver->Lambda;
-  HMatrix *Eigenvectors = Solver->Eigenvectors;
-  cdouble *Workspace    = Solver->Workspace;
-
-  int MLMax = M>L ? M : L;
-  size_t ML = MLMax*L, LL = L*L;
-  cdouble *MLBuffers[3], *LLBuffers[3];
-  MLBuffers[0] = Workspace;
+  cdouble *MLBuffers[2], *LLBuffers[3];
+  int ML = M*L, LL=L*L;
+  MLBuffers[0] = Solver->Workspace;
   MLBuffers[1] = MLBuffers[0] + ML;
-  MLBuffers[2] = MLBuffers[1] + ML;
-  LLBuffers[0] = MLBuffers[2] + ML;
+  LLBuffers[0] = MLBuffers[1] + ML;
   LLBuffers[1] = LLBuffers[0] + LL;
   LLBuffers[2] = LLBuffers[1] + LL;
 
-  /***************************************************************/
-  /* evaluate contour integrals by numerical quadrature to get   */
-  /* A0 and A1 matrices                                          */
-  /***************************************************************/
-  HMatrix       A0(M,L,LHM_COMPLEX,(void *)MLBuffers[0]);
-  HMatrix       A1(M,L,LHM_COMPLEX,(void *)MLBuffers[1]);
-  HMatrix MInvVHat(M,L,LHM_COMPLEX,(void *)MLBuffers[2]);
-  A0.Zero();
-  A1.Zero();
-  double DeltaTheta = 2.0*M_PI / ((double)N);
-  Log(" Evaluating contour integral (%i points)...",N);
-  for(int n=0; n<N; n++)
-   { 
-     double Theta = ((double)n)*DeltaTheta;
-     double CT    = cos(Theta), ST=sin(Theta);
-     cdouble z1   = Rx*CT + II*Ry*ST;
-     cdouble dz   = (II*Rx*ST + Ry*CT)/((double)N);
-     MInvVHat.Copy(VHat);
-     UserFunction(z0+z1, UserData, &MInvVHat);
-     VecPlusEquals(A0.ZM, dz,    MInvVHat.ZM, M*L);
-     VecPlusEquals(A1.ZM, z1*dz, MInvVHat.ZM, M*L);
-   }
-
-  /***************************************************************/
-  /* perform linear algebra manipulations to get eigenvalues and */
-  /* eigenvectors                                                */
-  /***************************************************************/
-  // A0 -> V0Full * Sigma * W0TFull'
-  Log(" Computing SVD...");
-  HMatrix V0Full(M,L,LHM_COMPLEX,(void *)MLBuffers[2]);
+  bool Verbose=          CheckEnv("SCUFF_BEYN_VERBOSE");
+  double RankTol=1.0e-4; CheckEnv("SCUFF_BEYN_RANK_TOL",&RankTol);
+  double ResTol=0.0;     CheckEnv("SCUFF_BEYN_RES_TOL",&ResTol);
+ 
+  // A0 -> V0Full * Sigma * W0TFull' 
+  Log(" Beyn: computing SVD...");
+  HMatrix V0Full(M,L,LHM_COMPLEX,(void *)MLBuffers[0]);
   HMatrix W0TFull(L,L,LHM_COMPLEX,(void *)LLBuffers[0]);
-  A0.SVD(Sigma, &V0Full, &W0TFull);
+  A0->SVD(Sigma, &V0Full, &W0TFull);
 
-  // compute effective rank K
+  // compute effective rank K (number of eigenvalue candidates)
   int K=0;
-  double SigmaThreshold=1.0e-8;
   for(int k=0; k<Sigma->N; k++)
-   if (Sigma->GetEntryD(k) > SigmaThreshold)
-    K++;
-  Log(" %i/%i relevant singular values",K,L);
-  if (K==L)
-   Warn("K=L=%i in BeynMethod (repeat with higher L)",K,L);
+   { if (Verbose) Log("Beyn: SV(%i)=%e",k,Sigma->GetEntryD(k));
+     if (Sigma->GetEntryD(k) > RankTol )
+      K++;
+   }
+  Log(" Beyn: %i/%i relevant singular values",K,L);
   if (K==0)
-   { Warn("no eigenvalues found!");
+   { Warn("no singular values found in Beyn eigensolver");
      return 0;
-   };
+   }
 
   // set V0, W0T = matrices of first K right, left singular vectors
   HMatrix V0(M,K,LHM_COMPLEX,(void *)MLBuffers[0]);
@@ -190,33 +172,134 @@ int BeynSolve(BeynSolver *Solver,
   HMatrix TM2(K,L,LHM_COMPLEX,(void *)LLBuffers[0]);
   HMatrix B(K,K,LHM_COMPLEX,(void *)LLBuffers[2]);
   Log(" Multiplying V0*A1->TM...");
-  V0.Multiply(&A1, &TM2, "--transA C");   // TM2 <- V0' * A1
+  V0.Multiply(A1, &TM2, "--transA C");   // TM2 <- V0' * A1
   Log(" Multiplying TM*W0T->B...");
   TM2.Multiply(&W0T, &B, "--transB C");   //  B <- TM2 * W0
   for(int m=0; m<K; m++)                  //  B <- B * Sigma^{-1}
    for(int n=0; n<K; n++)
     B.ScaleEntry(m,n,1.0/Sigma->GetEntry(n));
 
-  Log(" Eigensolving...");
-  HVector LambdaK(K,LHM_COMPLEX,(void *)LLBuffers[0]);
-  HMatrix S(K,K,LHM_COMPLEX,(void *)LLBuffers[1]);
-  B.NSEig(&LambdaK, &S);
+  // B -> S*Lambda*S'
+  Log(" Eigensolving (%i,%i)",K,K);
+  HVector Lambda(K,LLBuffers[0]);
+  HMatrix S(K,K,LLBuffers[1]);
+  B.NSEig(&Lambda, &S);
 
+  // V0S <- V0*S
   Log(" Multiplying V0*S...");
-  HMatrix EigenvectorsK(M,K,LHM_COMPLEX,(void *)MLBuffers[1]);
-  V0.Multiply(&S, &EigenvectorsK);
-
-  Solver->Lambda->Zero();
-  Solver->Eigenvectors->Zero();
+  HMatrix V0S(M,K,MLBuffers[1]);
+  V0.Multiply(&S, &V0S);
+ 
+  Eigenvalues->Zero();
+  if (Eigenvectors) Eigenvectors->Zero();
+  int KRetained=0;
   for(int k=0; k<K; k++)
-   { Solver->Lambda->SetEntry(k, LambdaK.GetEntry(k) + z0 );
-     for(int m=0; m<M; m++)
-      Solver->Eigenvectors->SetEntry(m,k, EigenvectorsK.GetEntry(m,k));
-   };
+   { 
+     cdouble  z = z0 + Lambda.GetEntry(k);
+     cdouble *V = (cdouble *)V0S.GetColumnPointer(k);
 
+     double Residual=0.0;
+     if (ResTol>0.0)
+      { HMatrix Vk(M,1,V);
+        HMatrix MVk(M,1,MLBuffers[0]);
+        UserFunc(z, UserData, &Vk, &MVk);
+        Residual=VecNorm(MVk.ZM, M);
+        if (Verbose) Log("Beyn: Residual(%i)=%e",k,Residual);
+      }
+     if (ResTol>0.0 && Residual>ResTol) continue;
+
+    Eigenvalues->SetEntry(KRetained, z);
+    if (Eigenvectors) 
+     { Eigenvectors->SetEntries(":", KRetained, V);
+       Solver->Residuals->SetEntry(KRetained,Residual);
+     }
+    KRetained++;
+   }
+  return KRetained;
+}
+
+/***************************************************************/
+/***************************************************************/
+/***************************************************************/
+int BeynSolve(BeynSolver *Solver,
+              BeynFunction UserFunc, void *UserData,
+              cdouble z0, double Rx, double Ry, int N)
+{  
+  /***************************************************************/
+  /* force N to be even so we can simultaneously evaluate        */
+  /* the integral with N/2 quadrature points                     */
+  /***************************************************************/
+  if ( (N%2)==1 ) N++;
+
+  if (Rx==Ry)
+   Log("Applying Beyn method with z0=%s,R=%e,N=%i...",z2s(z0),Rx,N);
+  else
+   Log("Applying Beyn method with z0=%s,Rx=%e,Ry=%e,N=%i...",z2s(z0),Rx,Ry,N);
+
+  int M                 = Solver->M;
+  int L                 = Solver->L;
+  HMatrix *A0           = Solver->A0;
+  HMatrix *A1           = Solver->A1;
+  HMatrix *A0Coarse     = Solver->A0Coarse;
+  HMatrix *A1Coarse     = Solver->A1Coarse;
+  HMatrix *MInvVHat     = Solver->MInvVHat;
+  HMatrix *VHat         = Solver->VHat;
+
+  /***************************************************************/
+  /* evaluate contour integrals by numerical quadrature to get   */
+  /* A0 and A1 matrices                                          */
+  /***************************************************************/
+  A0->Zero();
+  A1->Zero();
+  A0Coarse->Zero();
+  A1Coarse->Zero();
+  double DeltaTheta = 2.0*M_PI / ((double)N);
+  Log(" Evaluating contour integral (%i points)...",N);
+  for(int n=0; n<N; n++)
+   { 
+     double Theta = ((double)n)*DeltaTheta;
+     double CT    = cos(Theta), ST=sin(Theta);
+     cdouble z1   = Rx*CT + II*Ry*ST;
+     cdouble dz   = (II*Rx*ST + Ry*CT)/((double)N);
+
+     MInvVHat->Copy(VHat);
+     UserFunc(z0+z1, UserData, MInvVHat, 0);
+
+     VecPlusEquals(A0->ZM, dz,    MInvVHat->ZM, M*L);
+     VecPlusEquals(A1->ZM, z1*dz, MInvVHat->ZM, M*L);
+
+     if ( (n%2)==0 )
+      { VecPlusEquals(A0Coarse->ZM, 2.0*dz,    MInvVHat->ZM, M*L);
+        VecPlusEquals(A1Coarse->ZM, 2.0*z1*dz, MInvVHat->ZM, M*L);
+      }
+   }
+
+  /***************************************************************/
+  /***************************************************************/
+  /***************************************************************/
+  HVector *Eigenvalues  = Solver->Eigenvalues;
+  HVector *EVErrors     = Solver->EVErrors;
+  HMatrix *Eigenvectors = Solver->Eigenvectors;
+  
+  int K       = ProcessAMatrices(Solver, UserFunc, UserData, A0,       A1,       z0, Eigenvalues, Eigenvectors);
+  int KCoarse = ProcessAMatrices(Solver, UserFunc, UserData, A0Coarse, A1Coarse, z0, EVErrors);
+  Log("{K,KCoarse}={%i,%i}",K,KCoarse);
+  for(int k=0; k<EVErrors->N && k<Eigenvalues->N; k++)
+   { EVErrors->ZV[k] -= Eigenvalues->ZV[k];
+     EVErrors->ZV[k] = cdouble( fabs(real(EVErrors->ZV[k])),
+                                fabs(imag(EVErrors->ZV[k]))
+                              );
+   }
+
+  /***************************************************************/
+  /***************************************************************/
+  /***************************************************************/
   return K;
 }
 
+/***************************************************************/
+/***************************************************************/
+/***************************************************************/
 int BeynSolve(BeynSolver *Solver,
               BeynFunction UserFunction, void *UserData,
               cdouble z0, double R, int N)

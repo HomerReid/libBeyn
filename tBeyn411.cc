@@ -22,15 +22,18 @@ using namespace scuff;
 
 /***************************************************************/
 /* function passed to BeynSolver, called for each quadrature   */
-/* point on the contour; its task is to replace the MxL matrix */
-/* VHat with M(z) \ VHat, i.e. Inverse[ M(z) ] * VHat          */
+/* point on the contour.                                       */
+/* If MVHat is non-NULL, the routine multiplies M(z)*VHat and  */
+/* stores the resut in MVHat.                                  */
+/* Otherwise the routine multiplies M^{-1}(z)*VHat in place,   */
+/* i.e. replaces VHat with Inverse[ M(z) ] * VHat.             */
 /***************************************************************/
 typedef struct BFData
  { 
    HMatrix *M;
  } BFData;
 
-void BeynFunc(cdouble z, void *UserData, HMatrix *VHat)
+void BeynFunc(cdouble z, void *UserData, HMatrix *VHat, HMatrix *MVHat)
 {
   // unpack fields from data structure
   BFData *Data   = (BFData *)UserData;
@@ -51,10 +54,13 @@ void BeynFunc(cdouble z, void *UserData, HMatrix *VHat)
   M->SetEntry(NR-1, NR-2, ODE);
   M->SetEntry(NR-1, NR-1, 0.5*DE + z/(z-1.0) ); // bottom row
 
-  // replace VHat with M\VHat
-
-  M->LUFactorize();
-  M->LUSolve(VHat);
+  if (MVHat)
+   M->Multiply(VHat, MVHat);
+  else
+   { // replace VHat with M\VHat
+     M->LUFactorize();
+     M->LUSolve(VHat);
+   }
 }
 
 /***************************************************************/
@@ -92,6 +98,9 @@ int main(int argc, char *argv[])
   ProcessOptions(argc, argv, OSArray);
   SetDefaultCD2SFormat("{%+.12e,%+.12e}");
 
+  if (!getenv("SCUFF_BEYN_RES_TOL"))
+   setenv("SCUFF_BEYN_RES_TOL","1.0e-4",1);
+
   /***************************************************************/
   /* initialize BeynSolver data structure ************************/
   /***************************************************************/
@@ -110,6 +119,6 @@ int main(int argc, char *argv[])
 
   printf("Found %i eigenvalues: \n",K);
   for(int k=0; k<K; k++)
-   printf("%i: %s \n",k,CD2S(Solver->Lambda->GetEntry(k)));
+   printf("%i: %s (residual %e)\n",k,CD2S(Solver->Eigenvalues->GetEntry(k)),Solver->Residuals->GetEntryD(k));
 
 }

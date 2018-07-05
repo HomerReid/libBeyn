@@ -101,12 +101,19 @@ radii `Rx`, `Ry`.
 The prototype of the user-supplied function passed to `BeynSolve` is
 
 ```C++
-  void UserFunction(cdouble z, void *UserData, HMatrix *VHat);
+  void UserFunction(cdouble z, void *UserData, HMatrix *VHat, HMatrix *MVHat);
 ```
 
-where `VHat` is an *M&times;L* complex-valued matrix. The user's function
-should overwrite `VHat` with `T(z) \ VHat`, i.e. the function
-should left-multiply the matrix `VHat` by the inverse of **T**(*z*).
+where `VHat` is an *M&times;L* complex-valued matrix. 
+
+If `MVHat` is non-null, the user's function should overwrite `MVHat`
+with `T(z) * VHat`, i.e. the function should left-multiply `VHat`
+by `T(z)` and store the result in `MVHat.`
+
+If `MVHat` is null, the function 
+should instead overwrite `VHat` with `T(z) \ VHat`, i.e. the function
+should left-multiply the matrix `VHat` by the inverse of **T**(*z*)
+and store the result in `VHat.`
 
 **Note:** `HMatrix` is a simple LAPACK wrapper class provided by
 the [`libhmat` support library for SCUFF-EM][libhmat], but
@@ -127,6 +134,25 @@ If the integer `K` returned by `BeynSolve` is nonzero,
 + `Data->Lambda->GetEntry(k)` returns the `k`th eigenvalue (`k=0,1,...,K-1`)
 
 + `Data->Eigenvectors->GetEntry(m,k)` returns the `m`th component of the `k`th eigenvector.
+
++ `Data->Residuals->GetEntryD(k)` is the residual of the `k`th eigenvector, i.e. `|`**T**(z) **v~k~**`|`
+   where **v~k~** is the `k`th eigenvector and `||` denotes L2 norm.
+
+### Environment variables
+
+The following environment variables may be set to customize the behavior
+of the Beyn solver.
+
++ `SCUFF_BEYN_RANK_TOL=1.0e-4`
+    The threshold magnitude for singular values to be considered relevant.
+
++ `SCUFF_BEYN_RES_TOL=1.0e-4`
+    The threshold magnitude for the residual. Candidate eigenvectors for which
+    `|`**T**(z) **v~k~**`|` exceeds this value are discarded.
+    By default this is set to 0, in which case all eigenvectors are retained.
+
++ `SCUFF_BEYN_VERBOSE=1`
+    Print more verbose messages to logfiles.
 
 # Sample problem: Beyn example 4.11
 

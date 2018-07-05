@@ -1,7 +1,8 @@
 ##################################################
 # set path to SCUFF-EM installation
 ##################################################
-SCUFFEM  = /usr/local
+#SCUFFEM  = /usr/local
+SCUFFEM  = ${SEI}/..
 
 SCUFFINC    =  $(SCUFFEM)/include/scuff-em
 SCUFFLIB    =  $(SCUFFEM)/lib

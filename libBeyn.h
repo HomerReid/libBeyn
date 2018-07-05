@@ -1,5 +1,35 @@
-#ifndef BEYNMETHOD_H
-#define BEYNMETHOD_H
+/* Copyright (C) 2005-2011 M. T. Homer Reid
+ *
+ * This file is part of SCUFF-EM.
+ *
+ * SCUFF-EM is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * SCUFF-EM is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+/*
+ * libBeyn.h -- header file for libBeyn, a simple implementation of
+ *           -- Beyn's algorithm for nonlinear eigenproblems
+ *           -- 
+ *           -- This is packaged together with SCUFF-EM, but
+ *           -- it is really a standalone independent entity
+ *           -- for general-purpose use in solving nonlinear
+ *           -- eigenproblems.
+ */
+
+
+#ifndef LIBBEYN_H
+#define LIBBEYN_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,7 +44,7 @@
 /* The user's function should replace VHat with                */
 /*  Inverse[ M(z) ] * VHat.                                    */
 /***************************************************************/
-typedef void (*BeynFunction)(cdouble z, void *UserData, HMatrix *VHat);
+typedef void (*BeynFunction)(cdouble z, void *UserData, HMatrix *VHat, HMatrix *MVHat);
 
 /***************************************************************/
 /***************************************************************/
@@ -24,9 +54,11 @@ typedef struct BeynSolver
    int M;   // dimension of matrices
    int L;   // number of columns of VHat matrix
 
-   HMatrix *VHat;
-   HVector *Sigma, *Lambda;
+   HVector *Eigenvalues, *EVErrors, *Residuals;
    HMatrix *Eigenvectors;
+   HMatrix *A0, *A1, *A0Coarse, *A1Coarse, *MInvVHat;
+   HMatrix *VHat;
+   HVector *Sigma;
    cdouble *Workspace;
 
  } BeynSolver;
