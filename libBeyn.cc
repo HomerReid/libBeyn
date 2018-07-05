@@ -34,21 +34,6 @@
 
 #define II cdouble(0.0,1.0)
 
-/***************************************************************/
-/* random number uniformly distributed between A and B *********/
-/***************************************************************/
-double randU(double A=0.0, double B=1.0)
- { return A + (B-A) * random() * (1.0 / RAND_MAX); }
-
-/***************************************************************/
-/* random number normally distributed with mean/stddev Mu/Sigma*/
-/***************************************************************/
-double randN(double Mu=0.0, double Sigma=1.0)
- { double u1 = randU();
-   double u2 = randU();
-   return Mu + Sigma*sqrt(-2.0*log(u1))*cos(2.0*M_PI*u2);
- }
-
 cdouble zrandN(double Mu=0.0, double Sigma=1.0)
 { return cdouble(randN(Mu,Sigma), randN(Mu,Sigma)); }
 
